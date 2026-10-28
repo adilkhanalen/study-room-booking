@@ -8,7 +8,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 // Palette sampled from the My DU screenshot
-tailwind.config={theme:{extend:{colors:{bg:'#F9FAFC',tile:'#E8F4FF',brand:'#0066FF',muted:'#787D81',line:'#DFE0E2',divider:'#D9DADC',alert:'#FC3B44',ok:'#13A35A'}}}}
+tailwind.config={theme:{extend:{colors:{bg:'#F9FAFC',tile:'#E8F4FF',brand:'#0066FF',muted:'#787D81',line:'#DFE0E2',divider:'#D9DADC',alert:'#FC3B44',ok:'#13A35A',warn:'#F59E0B'}}}}
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -55,7 +55,7 @@ alert:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5.5M12 16.5v.01'
 const Ic=({n,s=22,w=1.9,c='currentColor'})=>html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke=${c} strokeWidth=${w} strokeLinecap="round" strokeLinejoin="round"><path d=${P[n]}/></svg>`;
 
 const SERVICES=[['Dormitory','home'],['Academic calendar','cal'],['Class schedule','cal'],['Documents for review','folder'],['Applications','clip'],['Individual Study Plan','route'],['Peer Advisor','adv']];
-const ROOMS=[{id:'a',name:'Room 3.01',where:'Library, 3rd floor',seats:6},{id:'b',name:'Room 3.04',where:'Library, 3rd floor',seats:8},{id:'c',name:'Project Lab 2',where:'Main building, 2nd floor',seats:10},{id:'d',name:'Team Space B12',where:'Innovation hub',seats:4}];
+const ROOMS=[{id:1,name:'C1.1.139',active:true},{id:2,name:'C1.1.140',active:true},{id:3,name:'C1.1.141',active:true},{id:4,name:'C1.1.142',active:true},{id:5,name:'C1.1.143',active:true},{id:7,name:'C1.1.155',active:true},{id:8,name:'C1.1.156',active:true},{id:9,name:'C1.1.163',active:true},{id:10,name:'C1.1.164',active:true},{id:11,name:'C1.1.168',active:true}];
 const SLOTS=['09:00–10:30','10:30–12:00','13:00–14:30','14:30–16:00','16:00–17:30','17:30–19:00'];
 const BOOKED=['10:30–12:00'];
 const DAYS=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d});
@@ -66,29 +66,63 @@ const Fox=()=>html`<svg width="42" height="46" viewBox="0 0 56 56"><path d="M6 6
 
 const Tabs=()=>html`<nav className="flex shrink-0 border-t border-divider bg-bg pb-6 pt-2.5">${[['home','Main'],['menu','Menu'],['user','Profile']].map(([i,l])=>html`<div key=${l} className=${'flex flex-1 flex-col items-center gap-1 text-[11px] font-medium '+(l==='Menu'?'text-brand':'text-[#727476]')}><${Ic} n=${i} s=${26}/>${l}</div>`)}</nav>`;
 
-function Home({go}){
+const STATUS_STYLE={PRESENT:'bg-ok/10 text-ok',PENDING:'bg-warn/10 text-warn',CANCELLED:'bg-alert/10 text-alert'};
+const Badge=({status})=>html`<span className=${'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold '+STATUS_STYLE[status]}>${status}</span>`;
+
+function ManagerView(){
+  const[c2,setC2]=useState('PENDING');
+  return html`<div>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-tile px-2.5 py-1 text-[11px] font-medium text-brand"><span className="h-1.5 w-1.5 rounded-full bg-ok"></span>Live Data connected to Supabase PostgreSQL</span>
+    <h2 className="mb-2 mt-3 text-[15px] font-semibold">Today's room occupancy</h2>
+    <div className="space-y-2.5 pb-2">
+      <div className="rounded-lg border border-line bg-white p-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <div><p className="text-[15px] font-medium">Adilkhan</p><p className="text-[13px] text-muted">Room C1.1.139</p></div>
+          <${Badge} status="PRESENT"/>
+        </div>
+        <p className="mt-2 text-[12px] text-muted">Checked in via QR at 10:02 AM</p>
+      </div>
+      <div className="rounded-lg border border-line bg-white p-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <div><p className="text-[15px] font-medium">Unknown Team</p><p className="text-[13px] text-muted">Room C1.1.140</p></div>
+          <${Badge} status=${c2}/>
+        </div>
+        <p className="mt-2 text-[12px] text-muted">${c2==='PENDING'?'16 mins late · No QR scan detected':'Booking cancelled — marked as no-show'}</p>
+        ${c2==='PENDING'&&html`<button onClick=${()=>setC2('CANCELLED')} className="mt-3 h-10 w-full rounded-lg bg-alert text-[13px] font-semibold text-white">Cancel Booking (No-Show)</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function Home({go,view,setView}){
   const[q,setQ]=useState('');
   const rows=SERVICES.filter(r=>r[0].toLowerCase().includes(q.trim().toLowerCase()));
   return html`<div className="scr flex min-h-0 flex-1 flex-col">
     <${Status}/>
     <header className="flex shrink-0 items-center gap-3 border-b border-divider px-3.5 pb-2">
-      <${Fox}/><h1 className="flex-1 text-[16px] font-semibold">Menu of services</h1>
+      <${Fox}/><h1 className="flex-1 text-[16px] font-semibold">${view==='student'?'Menu of services':'Manager Dashboard'}</h1>
       <span className="relative text-[#757172]"><${Ic} n="bell" s=${30} w=${1.7}/><span className="absolute -right-1 -top-1 grid h-[15px] w-[15px] place-items-center rounded-full bg-alert text-[10px] font-medium text-white">4</span></span>
     </header>
-    <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-5">
-      <label className="flex h-[41px] items-center gap-2.5 rounded-lg border border-line bg-white px-3 focus-within:border-brand">
-        <${Ic} n="search" s=${22} c="#787D81"/>
-        <input value=${q} onChange=${e=>setQ(e.target.value)} placeholder="Search by services" className="w-full bg-transparent text-[15px] outline-none placeholder:text-muted"/>
-      </label>
-      <button onClick=${()=>go('book')} className="mt-4 flex w-full items-center gap-3.5 rounded-xl bg-brand p-4 text-left text-white transition active:scale-[.985]">
-        <span className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-lg bg-white/20"><${Ic} n="users" s=${24}/></span>
-        <span className="flex-1"><span className="flex items-center gap-2 text-[16px] font-semibold">Book a Study Room<span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-brand">New</span></span><span className="mt-0.5 block text-[13px] text-white/85">Reserve a collaborative space for your team</span></span>
-        <${Ic} n="next" s=${20}/>
-      </button>
-      <ul className="mt-3.5">
-        ${rows.map(([l,i])=>html`<li key=${l}><div className="flex items-center gap-3.5 py-[7px]"><span className="grid h-[35px] w-[35px] place-items-center rounded-lg bg-tile text-brand"><${Ic} n=${i} s=${22}/></span><span className="text-[15px] font-medium">${l}</span></div></li>`)}
-        ${!rows.length&&html`<li className="py-6 text-center text-[14px] text-muted">No services found</li>`}
-      </ul>
+    <div className="shrink-0 grid grid-cols-2 gap-1 rounded-lg bg-tile p-1 mx-3.5 mt-3">
+      <button onClick=${()=>setView('student')} className=${'h-9 rounded-md text-[13px] font-medium '+(view==='student'?'bg-white text-brand':'text-muted')}>Student View</button>
+      <button onClick=${()=>setView('manager')} className=${'h-9 rounded-md text-[13px] font-medium '+(view==='manager'?'bg-white text-brand':'text-muted')}>Manager View</button>
+    </div>
+    <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-3">
+      ${view==='student'?html`<div>
+        <label className="flex h-[41px] items-center gap-2.5 rounded-lg border border-line bg-white px-3 focus-within:border-brand">
+          <${Ic} n="search" s=${22} c="#787D81"/>
+          <input value=${q} onChange=${e=>setQ(e.target.value)} placeholder="Search by services" className="w-full bg-transparent text-[15px] outline-none placeholder:text-muted"/>
+        </label>
+        <button onClick=${()=>go('book')} className="mt-4 flex w-full items-center gap-3.5 rounded-xl bg-brand p-4 text-left text-white transition active:scale-[.985]">
+          <span className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-lg bg-white/20"><${Ic} n="users" s=${24}/></span>
+          <span className="flex-1"><span className="flex items-center gap-2 text-[16px] font-semibold">Book a Study Room<span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-brand">New</span></span><span className="mt-0.5 block text-[13px] text-white/85">Reserve a collaborative space for your team</span></span>
+          <${Ic} n="next" s=${20}/>
+        </button>
+        <ul className="mt-3.5">
+          ${rows.map(([l,i])=>html`<li key=${l}><div className="flex items-center gap-3.5 py-[7px]"><span className="grid h-[35px] w-[35px] place-items-center rounded-lg bg-tile text-brand"><${Ic} n=${i} s=${22}/></span><span className="text-[15px] font-medium">${l}</span></div></li>`)}
+          ${!rows.length&&html`<li className="py-6 text-center text-[14px] text-muted">No services found</li>`}
+        </ul>
+      </div>`:html`<${ManagerView}/>`}
     </div>
     <${Tabs}/>
   </div>`;
@@ -104,10 +138,10 @@ function Book({go,s,set,confirm}){
     </header>
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3.5 py-4">
       <section><h2 className=${h2}>Room</h2><div className="space-y-2">
-        ${ROOMS.map(r=>{const on=s.room===r.id;return html`<button key=${r.id} onClick=${()=>set({room:r.id})} className=${'flex w-full items-center gap-3 rounded-lg border p-2.5 text-left '+(on?'border-brand bg-tile':'border-line bg-white')}>
+        ${ROOMS.filter(r=>r.active).map(r=>{const on=s.room===r.id;return html`<button key=${r.id} onClick=${()=>set({room:r.id})} className=${'flex w-full items-center gap-3 rounded-lg border p-2.5 text-left '+(on?'border-brand bg-tile':'border-line bg-white')}>
           <span className=${'grid h-[35px] w-[35px] shrink-0 place-items-center rounded-lg '+(on?'bg-brand text-white':'bg-tile text-brand')}><${Ic} n="users" s=${20}/></span>
-          <span className="flex-1"><span className="block text-[15px] font-medium">${r.name}</span><span className="text-[13px] text-muted">${r.where}</span></span>
-          <span className="text-[13px] text-muted">${r.seats} seats</span></button>`})}
+          <span className="flex-1"><span className="block text-[15px] font-medium">Room ${r.name}</span><span className="text-[13px] text-muted">ID #${r.id} · Active</span></span>
+        </button>`})}
       </div></section>
       <section><h2 className=${h2}>Date</h2><div className="-mx-3.5 flex gap-2 overflow-x-auto px-3.5 pb-1">
         ${DAYS.map((d,i)=>{const on=s.day===i;return html`<button key=${i} onClick=${()=>set({day:i})} className=${'flex h-[66px] w-[54px] shrink-0 flex-col items-center justify-center rounded-lg border '+(on?'border-brand bg-brand text-white':'border-line bg-white')}><span className=${'text-[12px] '+(on?'text-white/80':'text-muted')}>${d.toLocaleDateString('en-US',{weekday:'short'})}</span><span className="text-[18px] font-semibold">${d.getDate()}</span></button>`})}
@@ -128,30 +162,43 @@ function Book({go,s,set,confirm}){
 
 function Done({s,date,go}){
   const r=ROOMS.find(x=>x.id===s.room);
+  const[checkedIn,setCheckedIn]=useState(false);
+  const[scanning,setScanning]=useState(false);
+  const scan=()=>{setScanning(true);setTimeout(()=>{setScanning(false);setCheckedIn(true)},900)};
   return html`<div className="scr flex min-h-0 flex-1 flex-col bg-ok text-white">
     <${Status} c="#fff" inv="#13A35A"/>
-    <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-      <span className="pop grid h-20 w-20 place-items-center rounded-full bg-white text-ok"><${Ic} n="check" s=${44} w=${2.6}/></span>
-      <span className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/20 py-1.5 pl-2.5 pr-3.5 text-[13px] font-semibold"><${Ic} n="shield" s=${16}/>Verified Team Lead</span>
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-6 text-center">
+      <span className="pop grid h-20 w-20 shrink-0 place-items-center rounded-full bg-white text-ok"><${Ic} n="check" s=${44} w=${2.6}/></span>
+      <span className="mt-5 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/50 bg-white/20 py-1.5 pl-2.5 pr-3.5 text-[13px] font-semibold"><${Ic} n="shield" s=${16}/>Verified Team Lead</span>
       <h1 className="mt-4 text-[28px] font-bold leading-tight">Booking Confirmed!</h1>
       <p className="mt-2 max-w-[280px] text-[15px] text-white/90">A receipt has been sent to your university email.</p>
       <dl className="mt-7 w-full space-y-2.5 rounded-xl bg-white p-4 text-left text-black">
         ${[['Room',r.name],['Date',date],['Time',s.slot],['Booking ID','SR-20481']].map(([k,v])=>html`<div key=${k} className="flex justify-between text-[14px]"><dt className="text-muted">${k}</dt><dd className="font-medium">${v}</dd></div>`)}
       </dl>
+      <div className="mt-3 w-full rounded-xl bg-white p-4 text-left text-black">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-[14px] font-semibold">Active Booking</h3>
+          <${Badge} status=${checkedIn?'PRESENT':'PENDING'}/>
+        </div>
+        <p className="mt-1 text-[13px] text-muted">Room C1.1.139 · ${date} · ${s.slot}</p>
+        ${checkedIn?html`<p className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-ok/10 py-2.5 text-[13px] font-semibold text-ok"><${Ic} n="check" s=${16} w=${2.4}/>Room unlocked</p>`:html`<p className="mt-1 text-[12px] font-medium text-warn">Action required — scan the room QR code to confirm attendance</p>
+          <button onClick=${scan} disabled=${scanning} className="mt-3 h-12 w-full rounded-lg bg-brand text-[15px] font-semibold text-white disabled:opacity-60">${scanning?'Scanning…':'📷 Scan Room QR Code (Check-In)'}</button>`}
+      </div>
     </div>
-    <div className="px-3.5 pb-6"><button onClick=${()=>go('home')} className="h-[50px] w-full rounded-lg bg-white text-[16px] font-semibold text-ok">Return Home</button></div>
+    <div className="shrink-0 px-3.5 pb-6 pt-2"><button onClick=${()=>go('home')} className="h-[50px] w-full rounded-lg bg-white text-[16px] font-semibold text-ok">Return Home</button></div>
   </div>`;
 }
 
 function App(){
   const[screen,go]=useState('home');
-  const[s,setS]=useState({room:'a',day:0,slot:SLOTS[0],role:'lead'});
+  const[view,setView]=useState('student');
+  const[s,setS]=useState({room:1,day:0,slot:SLOTS[0],role:'lead'});
   const[denied,setDenied]=useState(false);
   const set=p=>setS(o=>({...o,...p}));
   const confirm=()=>s.role==='lead'?go('done'):setDenied(true);
   const date=DAYS[s.day].toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   return html`<main className="phone">
-    ${screen==='home'&&html`<${Home} go=${go}/>`}
+    ${screen==='home'&&html`<${Home} go=${go} view=${view} setView=${setView}/>`}
     ${screen==='book'&&html`<${Book} go=${go} s=${s} set=${set} confirm=${confirm}/>`}
     ${screen==='done'&&html`<${Done} s=${s} date=${date} go=${go}/>`}
     ${denied&&html`<div role="alertdialog" className="fade absolute inset-0 z-10 grid place-items-center bg-black/50 p-5">
